@@ -10,40 +10,53 @@ from datetime import datetime
 
 warnings.filterwarnings("ignore")
 
+# ─────────────────────────────────────────────────────────────
+# MODERN PROFESSIONAL CONFIG
+# ─────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="MediScan AI | Radiology Suite",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Clean Professional Theme
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.main { background-color: #f8fafd; }
-.report-container {
-    background: white;
-    border: 1px solid #c8d6e5;
-    border-radius: 8px;
-    padding: 0;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-.report-header {
-    background: #003366;
-    color: white;
-    padding: 22px 28px;
-    display: flex;
-    justify-content: space-between;
-}
-.stButton > button {
-    width: 100%; background: #003366 !important; color: white !important;
-    border-radius: 6px; height: 3em; font-weight: 600;
-}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+    
+    .main { background-color: #f8fafc; }
+    .block-container { padding-top: 2rem; }
+    
+    h1 { font-family: 'Playfair Display', serif; color: #0f172a; }
+    .stButton > button {
+        background: #003366 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        height: 52px !important;
+        font-weight: 600 !important;
+    }
+    
+    .report-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    .report-header {
+        background: linear-gradient(135deg, #003366, #1e40af);
+        color: white;
+        padding: 25px 30px;
+    }
+    .section-title {
+        color: #003366;
+        border-bottom: 3px solid #003366;
+        padding-bottom: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ================= U-NET Model (Unchanged) =================
+# ================= U-NET (Unchanged) =================
 class DoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
@@ -96,131 +109,94 @@ def load_model():
             return model, False
     return model, False
 
-# ================= IMPROVED REPORT GENERATOR =================
+# ================= DYNAMIC REPORT =================
 def generate_professional_report(patient_info, lung_pixels, area_pct, scan_info):
     now = datetime.now()
-    date_str = now.strftime("%d %B %Y")
-    time_str = now.strftime("%H:%M")
     report_id = f"RAD-{now.strftime('%Y%m%d%H%M%S')}"
-    
     coverage_status = "Within normal range" if 20 <= area_pct <= 60 else "Requires review"
     
-    # Dynamic Impression based on Indication
-    indication = patient_info['indication'].lower()
-    if any(word in indication for word in ['pneumonia', 'consolidation', 'infection']):
-        impression_note = "Findings may correlate with infectious process. Clinical correlation with inflammatory markers recommended."
-    elif any(word in indication for word in ['cancer', 'mass', 'tumor', 'malignancy']):
-        impression_note = "No gross mass lesion seen on this single slice. Dedicated contrast-enhanced study and multiplanar review advised."
-    elif any(word in indication for word in ['effusion', 'fluid']):
-        impression_note = "No gross pleural effusion detected on this slice."
-    elif any(word in indication for word in ['tb', 'tuberculosis']):
-        impression_note = "No obvious cavitary or miliary lesions seen. Further evaluation with HRCT suggested if clinically indicated."
+    # Dynamic text based on indication
+    ind = patient_info['indication'].lower()
+    if 'pneumonia' in ind or 'consolidation' in ind:
+        impression = "Findings are suggestive of possible consolidation. Clinical correlation with symptoms and labs is advised."
+    elif 'mass' in ind or 'cancer' in ind or 'tumor' in ind:
+        impression = "No obvious mass lesion seen on this slice. Further dedicated imaging recommended."
+    elif 'effusion' in ind:
+        impression = "No significant pleural effusion detected on current slice."
     else:
-        impression_note = "No acute gross abnormality detected on the submitted single axial slice."
+        impression = "No acute gross abnormality detected on the submitted axial slice."
 
-    report = f"""
+    report = f"""MEDISCAN AI RADIOLOGY — OFFICIAL DIAGNOSTIC REPORT
 ================================================================================
-          MEDISCAN AI RADIOLOGY — OFFICIAL DIAGNOSTIC REPORT
-================================================================================
-REPORT ID       : {report_id}
-REPORT DATE     : {date_str}
-REPORT TIME     : {time_str} (PKT)
-INSTITUTION     : MediScan AI Radiology Centre
-DEPARTMENT      : Diagnostic Radiology & Medical Imaging
-MODALITY        : Computed Tomography (CT) — Chest / Thorax
-PRIORITY        : Routine
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Report ID       : {report_id}
+Report Date     : {now.strftime("%d %B %Y")}
+Report Time     : {now.strftime("%H:%M")} (PKT)
+
 PATIENT INFORMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Patient Name    : {patient_info['name']}
-Medical Rec. No.: {patient_info['mrn']}
-Date of Birth   : {patient_info['dob']}
-Gender          : {patient_info['gender']}
-Age             : {patient_info['age']} years
-Referring Phys. : {patient_info['referring_doc']}
-Clinical Indic. : {patient_info['indication']}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TECHNICAL PARAMETERS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI Model        : U-Net (Encoder-Decoder Architecture, 31M Parameters)
-Input Resolution: 256 × 256 pixels (axial slice)
-Preprocessing   : CLAHE (clipLimit=2.0)
-Segmentation    : Binary thresholding at 0.5
-Contrast Agent  : {scan_info['contrast']}
-Slice Thickness : {scan_info['slice_thickness']} mm
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-QUANTITATIVE AI FINDINGS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Total Scan Pixels           : 65,536
-  Segmented Lung Area         : {lung_pixels:,} pixels
-  Lung Field Coverage         : {area_pct:.2f}% 
-  Coverage Assessment         : {coverage_status}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MRN             : {patient_info['mrn']}
+Age/Gender      : {patient_info['age']} years / {patient_info['gender']}
+Indication      : {patient_info['indication']}
+
+QUANTITATIVE FINDINGS
+Lung Pixels     : {lung_pixels:,}
+Coverage        : {area_pct:.2f}% ({coverage_status})
+
 IMPRESSION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{impression_note}
+{impression}
+Multi-slice review and clinical correlation strongly recommended.
 
-1. AI-assisted lung segmentation successfully performed.
-2. Segmented lung field area of {area_pct:.2f}% is {coverage_status.lower()}.
-3. No gross consolidation, large mass or pneumothorax identified on this single axial slice.
-4. Multi-slice volumetric analysis and clinical correlation is strongly recommended.
-
-RECOMMENDATION: Please correlate with full CT series, laboratory findings and patient history. 
-This AI report is for decision support only.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DISCLAIMER
-This report is generated by an AI system for research and educational purposes only.
-All findings must be reviewed and signed by a qualified radiologist.
-© {now.year} MediScan AI Radiology Suite.
-================================================================================
+Disclaimer: This is AI generated report for research/educational purpose only.
 """
-    return report.strip()
+    return report
 
-# ===================== MAIN UI =====================
+# ===================== MAIN =====================
 def main():
     with st.sidebar:
-        st.markdown("## 🏥 MediScan AI")
-        st.markdown("**Radiology Suite**")
+        st.title("🏥 MediScan AI")
+        st.markdown("**Advanced Lung Segmentation**")
         st.divider()
-        st.markdown("##### 👤 Patient Details")
+        
+        st.subheader("Patient Details")
         p_name = st.text_input("Full Name", "John Doe")
-        p_id = st.text_input("Medical Record No.", "MRN-10293")
-        p_dob = st.text_input("Date of Birth", "01-01-1980")
+        p_id = st.text_input("MRN", "MRN-10293")
+        p_age = st.number_input("Age", 0, 120, 45)
         p_gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        p_age = st.number_input("Age (years)", 0, 120, 44)
         
         st.divider()
-        st.markdown("##### 🩺 Clinical Information")
-        p_ref_doc = st.text_input("Referring Physician", "Dr. A. Khan")
-        p_indication = st.text_input("Clinical Indication", "Cough, Breathlessness — Rule out consolidation", help="This will affect the impression in report")
-
+        st.subheader("Clinical Information")
+        p_indication = st.text_input("Clinical Indication", 
+                                   "Cough, Breathlessness — Rule out consolidation",
+                                   help="Write detailed indication for better report")
+        
         st.divider()
-        st.markdown("##### ⚙️ Scan Parameters")
-        p_contrast = st.selectbox("Contrast", ["Non-Contrast", "IV Contrast", "Oral + IV Contrast"])
-        p_slice_thk = st.selectbox("Slice Thickness (mm)", ["1.0", "1.5", "2.5", "5.0"])
+        st.subheader("Scan Info")
+        p_contrast = st.selectbox("Contrast", ["Non-Contrast", "IV Contrast"])
+        p_slice = st.selectbox("Slice Thickness", ["1.0 mm", "1.5 mm", "5.0 mm"])
 
-    st.title("🫁 MediScan AI — Radiology Suite")
-    st.caption("AI-assisted CT Lung Segmentation | Research Use Only")
+    st.title("🫁 MediScan AI Radiology Suite")
+    st.caption("Professional AI Lung Segmentation System")
 
     model, loaded = load_model()
     if not loaded:
         st.error("Model file not found!")
         return
 
-    uploaded = st.file_uploader("📂 Select Axial CT Slice", type=["png", "jpg", "jpeg", "tif"])
+    uploaded = st.file_uploader("Upload Axial CT Slice", type=["png", "jpg", "jpeg", "tif"])
 
     if uploaded:
+        col1, col2, col3 = st.columns([1.1, 1.1, 1.3])
+        
         pil_img = Image.open(uploaded)
-        col1, col2, col3 = st.columns([1, 1, 1.4])
-
+        
         with col1:
-            st.subheader("📷 Source Image")
+            st.subheader("Original Image")
             st.image(pil_img, use_column_width=True)
 
         # Processing
         img_np = np.array(pil_img.convert("L").resize((256, 256)))
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        norm_img = clahe.apply(img_np).astype(np.float32) / 255.0
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        norm_img = clahe.apply(img_np).astype(np.float32)/255.0
         t = torch.tensor(norm_img).unsqueeze(0).unsqueeze(0)
 
         with torch.no_grad():
@@ -228,30 +204,30 @@ def main():
             mask = (out.squeeze().numpy() > 0.5).astype(np.uint8)
             lung_pixels = int(np.sum(mask))
 
-        area_pct = (lung_pixels / (256 * 256)) * 100
+        area_pct = (lung_pixels / 65536) * 100
 
         with col2:
-            st.subheader("🤖 AI Segmentation")
-            st.image(mask * 255, use_column_width=True)
-            st.metric("Lung Coverage", f"{area_pct:.1f}%")
-
-        # Report
-        patient_info = {
-            "name": p_name, "mrn": p_id, "dob": p_dob, "gender": p_gender,
-            "age": p_age, "referring_doc": p_ref_doc, "indication": p_indication
-        }
-        scan_info = {"contrast": p_contrast, "slice_thickness": p_slice_thk}
-
-        report_text = generate_professional_report(patient_info, lung_pixels, area_pct, scan_info)
+            st.subheader("AI Segmentation")
+            st.image(mask*255, use_column_width=True)
+            st.success(f"Lung Coverage: **{area_pct:.1f}%**")
 
         with col3:
-            st.subheader("📋 Diagnostic Report")
-            st.text_area("Generated Report", report_text, height=600)
+            st.subheader("📋 AI Diagnostic Report")
+            
+            patient_info = {
+                "name": p_name, "mrn": p_id, "age": p_age, 
+                "gender": p_gender, "indication": p_indication
+            }
+            scan_info = {"contrast": p_contrast, "slice_thickness": p_slice}
+            
+            report_text = generate_professional_report(patient_info, lung_pixels, area_pct, scan_info)
+            
+            st.text_area("", report_text, height=500)
             
             st.download_button(
-                label="📥 Download Report (.txt)",
+                "📥 Download Full Report",
                 data=report_text,
-                file_name=f"MediScan_Report_{p_id}_{datetime.now().strftime('%Y%m%d')}.txt",
+                file_name=f"MediScan_{p_id}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
