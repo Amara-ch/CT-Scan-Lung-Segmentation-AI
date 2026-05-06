@@ -11,14 +11,10 @@ warnings.filterwarnings("ignore")
 # ─────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="MediScan AI | CT Lung Segmentation",
-    page_icon="🫁",
-    layout="wide"
-)
+st.set_page_config(page_title="MediScan AI", page_icon="🫁")
 
 # ─────────────────────────────────────────────────────────────
-# U-NET ARCHITECTURE (Must match notebook9dcaad60aa.ipynb)
+# U-NET ARCHITECTURE (Matches notebook9dcaad60aa.ipynb)
 # ─────────────────────────────────────────────────────────────
 class DoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -57,66 +53,54 @@ class UNet(nn.Module):
         return torch.sigmoid(self.out(x))
 
 # ─────────────────────────────────────────────────────────────
-# PREPROCESSING & INFERENCE
+# HELPERS
 # ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
-    device = torch.device("cpu")
     model = UNet()
-    model_path = "best_unet_model.pth"
-    
-    if os.path.exists(model_path):
-        state_dict = torch.load(model_path, map_location=device)
-        # Handle cases where weights are wrapped in a 'model_state_dict' key
-        if isinstance(state_dict, dict) and "model_state_dict" in state_dict:
-            state_dict = state_dict["model_state_dict"]
-        model.load_state_dict(state_dict)
+    path = "best_unet_model.pth"
+    if os.path.exists(path):
+        sd = torch.load(path, map_location="cpu")
+        if "model_state_dict" in sd: sd = sd["model_state_dict"]
+        model.load_state_dict(sd)
         model.eval()
-        return model, device, True
-    return model, device, False
+        return model, True
+    return model, False
 
-def preprocess(pil_img):
-    # Grayscale conversion and resize to 256x256 as per notebook
-    img = np.array(pil_img.convert("L").resize((256, 256)))
-    # Apply CLAHE enhancement
+def process_and_predict(pil_img, model):
+    # Resize and CLAHE (Matches training)[cite: 1]
+    img_np = np.array(pil_img.convert("L").resize((256, 256)))
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    img = clahe.apply(img).astype(np.float32) / 255.0[cite: 1]
-    return torch.tensor(img).unsqueeze(0).unsqueeze(0)
+    norm_img = clahe.apply(img_np).astype(np.float32) / 255.0[cite: 1]
+    
+    # Predict[cite: 1]
+    t = torch.tensor(norm_img).unsqueeze(0).unsqueeze(0)
+    with torch.no_grad():
+        out = model(t)
+        mask = (out.squeeze().numpy() > 0.5).astype(np.uint8)
+    
+    return img_np, mask * 255
 
 # ─────────────────────────────────────────────────────────────
-# MAIN APP
+# APP
 # ─────────────────────────────────────────────────────────────
-def main():
-    st.title("🫁 MediScan AI — CT Lung Segmentation")
-    
-    model, device, loaded = load_model()
-    
-    if not loaded:
-        st.error("Model weights ('best_unet_model.pth') not found in app directory.")
-        return
+st.title("🫁 Lung Segmentation")
+model, loaded = load_model()
 
-    uploaded = st.file_uploader("Upload a CT scan axial slice", type=["png","jpg","jpeg","tif"])
-    
+if not loaded:
+    st.error("Missing 'best_unet_model.pth'")
+else:
+    uploaded = st.file_uploader("Upload CT Scan", type=["png","jpg","jpeg","tif"])
     if uploaded:
-        # Load image and display
-        pil_img = Image.open(uploaded)
+        # Load the image
+        raw_img = Image.open(uploaded)
+        
+        # Process image and get mask
+        display_img, mask_img = process_and_predict(raw_img, model)
         
         col1, col2 = st.columns(2)
         with col1:
-            # Using use_column_width for maximum compatibility[cite: 1]
-            st.image(pil_img, caption="Original CT Scan", use_column_width=True)
-            
-        # Run model inference[cite: 1]
-        input_tensor = preprocess(pil_img)
-        with torch.no_grad():
-            prediction = model(input_tensor.to(device))
-            mask = (prediction.squeeze().numpy() > 0.5).astype(np.uint8) 
-            
+            # We pass NumPy arrays instead of PIL objects to avoid Axios 400 errors[cite: 1]
+            st.image(display_img, caption="CT Scan", use_column_width=True)
         with col2:
-            # Display binary mask (white on black)[cite: 1]
-            st.image(mask * 255, caption="Predicted Lung Mask", use_column_width=True)
-            
-        st.success("Analysis complete.")
-
-if __name__ == "__main__":
-    main()
+            st.image(mask_img, caption="Lung Mask", use_column_width=True)
