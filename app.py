@@ -61,19 +61,22 @@ def load_model():
     path = "best_unet_model.pth"
     if os.path.exists(path):
         sd = torch.load(path, map_location="cpu")
-        if "model_state_dict" in sd: sd = sd["model_state_dict"]
+        if isinstance(sd, dict) and "model_state_dict" in sd:
+            sd = sd["model_state_dict"]
         model.load_state_dict(sd)
         model.eval()
         return model, True
     return model, False
 
 def process_and_predict(pil_img, model):
-    # Resize and CLAHE (Matches training)[cite: 1]
+    # Resize and conversion[cite: 1]
     img_np = np.array(pil_img.convert("L").resize((256, 256)))
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    norm_img = clahe.apply(img_np).astype(np.float32) / 255.0[cite: 1]
     
-    # Predict[cite: 1]
+    # CLAHE Preprocessing[cite: 1]
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    norm_img = clahe.apply(img_np).astype(np.float32) / 255.0
+    
+    # Tensor setup[cite: 1]
     t = torch.tensor(norm_img).unsqueeze(0).unsqueeze(0)
     with torch.no_grad():
         out = model(t)
@@ -82,25 +85,23 @@ def process_and_predict(pil_img, model):
     return img_np, mask * 255
 
 # ─────────────────────────────────────────────────────────────
-# APP
+# APP INTERFACE
 # ─────────────────────────────────────────────────────────────
-st.title("🫁 Lung Segmentation")
+st.title("🫁 Lung Segmentation AI")
 model, loaded = load_model()
 
 if not loaded:
-    st.error("Missing 'best_unet_model.pth'")
+    st.error("Model file 'best_unet_model.pth' not found in directory.")
 else:
     uploaded = st.file_uploader("Upload CT Scan", type=["png","jpg","jpeg","tif"])
     if uploaded:
-        # Load the image
         raw_img = Image.open(uploaded)
-        
-        # Process image and get mask
         display_img, mask_img = process_and_predict(raw_img, model)
         
         col1, col2 = st.columns(2)
         with col1:
-            # We pass NumPy arrays instead of PIL objects to avoid Axios 400 errors[cite: 1]
-            st.image(display_img, caption="CT Scan", use_column_width=True)
+            st.image(display_img, caption="Original CT Scan", use_column_width=True)
         with col2:
-            st.image(mask_img, caption="Lung Mask", use_column_width=True)
+            st.image(mask_img, caption="Lung Segmentation Mask", use_column_width=True)
+        
+        st.success("Analysis complete.")
