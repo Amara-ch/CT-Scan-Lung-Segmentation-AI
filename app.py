@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────────────────────
-# U-NET ARCHITECTURE (Verbatim from notebook9dcaad60aa.ipynb)
+# U-NET ARCHITECTURE (Must match notebook9dcaad60aa.ipynb)
 # ─────────────────────────────────────────────────────────────
 class DoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -57,39 +57,30 @@ class UNet(nn.Module):
         return torch.sigmoid(self.out(x))
 
 # ─────────────────────────────────────────────────────────────
-# MODEL LOADER
+# PREPROCESSING & INFERENCE
 # ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
-    # Use CPU for deployment compatibility
     device = torch.device("cpu")
     model = UNet()
-    
     model_path = "best_unet_model.pth"
+    
     if os.path.exists(model_path):
-        # Load state_dict directly
         state_dict = torch.load(model_path, map_location=device)
-        # If weights were saved with a 'model_state_dict' key, extract it
+        # Handle cases where weights are wrapped in a 'model_state_dict' key
         if isinstance(state_dict, dict) and "model_state_dict" in state_dict:
             state_dict = state_dict["model_state_dict"]
-        
         model.load_state_dict(state_dict)
         model.eval()
         return model, device, True
     return model, device, False
 
-# ─────────────────────────────────────────────────────────────
-# PREPROCESSING (Matches Training in notebook9dcaad60aa.ipynb)
-# ─────────────────────────────────────────────────────────────
 def preprocess(pil_img):
-    # Convert to grayscale and resize to 256x256
+    # Grayscale conversion and resize to 256x256 as per notebook
     img = np.array(pil_img.convert("L").resize((256, 256)))
-    
-    # Apply CLAHE as used in training
+    # Apply CLAHE enhancement
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     img = clahe.apply(img).astype(np.float32) / 255.0[cite: 1]
-    
-    # Add batch and channel dimensions: (1, 1, 256, 256)
     return torch.tensor(img).unsqueeze(0).unsqueeze(0)
 
 # ─────────────────────────────────────────────────────────────
@@ -101,30 +92,29 @@ def main():
     model, device, loaded = load_model()
     
     if not loaded:
-        st.error("❌ Model weights not found. Please ensure 'best_unet_model.pth' is in the app directory.")
+        st.error("Model weights ('best_unet_model.pth') not found in app directory.")
         return
 
-    uploaded = st.file_uploader("Upload a CT axial slice", type=["png","jpg","jpeg","tif"])
+    uploaded = st.file_uploader("Upload a CT scan axial slice", type=["png","jpg","jpeg","tif"])
     
     if uploaded:
+        # Load image and display
         pil_img = Image.open(uploaded)
         
-        # UI Columns
         col1, col2 = st.columns(2)
-        
         with col1:
-            st.image(pil_img, caption="Original CT Scan", use_container_width=True)
+            # Using use_column_width for maximum compatibility[cite: 1]
+            st.image(pil_img, caption="Original CT Scan", use_column_width=True)
             
-        # Inference
+        # Run model inference[cite: 1]
         input_tensor = preprocess(pil_img)
         with torch.no_grad():
             prediction = model(input_tensor.to(device))
-            # Binary threshold at 0.5[cite: 1]
             mask = (prediction.squeeze().numpy() > 0.5).astype(np.uint8) 
             
         with col2:
-            # Multiply by 255 to make the mask visible as a white-on-black image
-            st.image(mask * 255, caption="Predicted Lung Mask", use_container_width=True)
+            # Display binary mask (white on black)[cite: 1]
+            st.image(mask * 255, caption="Predicted Lung Mask", use_column_width=True)
             
         st.success("Analysis complete.")
 
