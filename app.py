@@ -31,7 +31,6 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* Custom styling for MediScan AI */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; background: #050e18; color: #d0dce8; }
 .main .block-container { padding: 1.5rem 2rem; max-width: 1400px; }
@@ -109,8 +108,11 @@ def load_model():
 
     if not os.path.exists(MODEL_PATH) and GDRIVE_ID:
         with st.spinner("⬇️  Downloading model weights…"):
-            gdown.download(f"https://drive.google.com/uc?id={GDRIVE_ID}",
-                           MODEL_PATH, quiet=False)
+            gdown.download(
+                f"https://drive.google.com/uc?id={GDRIVE_ID}",
+                MODEL_PATH,
+                quiet=False
+            )
 
     if os.path.exists(MODEL_PATH):
         ckpt = torch.load(MODEL_PATH, map_location=device)
