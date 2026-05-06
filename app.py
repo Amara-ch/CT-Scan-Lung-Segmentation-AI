@@ -91,9 +91,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────
-# U-NET ARCHITECTURE (Unchanged)
-# ─────────────────────────────────────────────────────────────
+# U-NET Architecture (Unchanged)
 class DoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
@@ -130,9 +128,6 @@ class UNet(nn.Module):
         x = self.dec1(torch.cat([self.up1(x), s1], 1))
         return torch.sigmoid(self.out(x))
 
-# ─────────────────────────────────────────────────────────────
-# MODEL LOADING
-# ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
     model = UNet()
@@ -146,9 +141,7 @@ def load_model():
         return model, True
     return model, False
 
-# ─────────────────────────────────────────────────────────────
-# PROFESSIONAL REPORT GENERATOR (Modified as requested)
-# ─────────────────────────────────────────────────────────────
+# Report Generator (No hardcoded observations)
 def generate_professional_report(patient_info, lung_pixels, area_pct, scan_info):
     now = datetime.now()
     date_str = now.strftime("%d %B %Y")
@@ -161,78 +154,57 @@ def generate_professional_report(patient_info, lung_pixels, area_pct, scan_info)
 ================================================================================
           MEDISCAN AI RADIOLOGY — OFFICIAL DIAGNOSTIC REPORT
 ================================================================================
-REPORT ID : {report_id}
-REPORT DATE : {date_str}
-REPORT TIME : {time_str} (PKT)
-INSTITUTION : MediScan AI Radiology Centre
-DEPARTMENT : Diagnostic Radiology & Medical Imaging
-MODALITY : Computed Tomography (CT) — Chest / Thorax
-PRIORITY : Routine
+REPORT ID       : {report_id}
+REPORT DATE     : {date_str}
+REPORT TIME     : {time_str} (PKT)
+INSTITUTION     : MediScan AI Radiology Centre
+DEPARTMENT      : Diagnostic Radiology & Medical Imaging
+MODALITY        : Computed Tomography (CT) — Chest / Thorax
+PRIORITY        : Routine
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PATIENT INFORMATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Patient Name : {patient_info['name']}
+Patient Name    : {patient_info['name']}
 Medical Rec. No.: {patient_info['mrn']}
-Date of Birth : {patient_info['dob']}
-Gender : {patient_info['gender']}
-Age : {patient_info['age']} years
+Date of Birth   : {patient_info['dob']}
+Gender          : {patient_info['gender']}
+Age             : {patient_info['age']} years
 Referring Phys. : {patient_info['referring_doc']}
 Clinical Indic. : {patient_info['indication']}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TECHNICAL PARAMETERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI Model : U-Net (Encoder-Decoder Architecture, 31M Parameters)
+AI Model        : U-Net (Encoder-Decoder Architecture, 31M Parameters)
 Input Resolution: 256 × 256 pixels (axial slice)
-Preprocessing : CLAHE (Contrast Limited Adaptive Histogram Equalization)
-                  clipLimit=2.0, tileGridSize=(8×8)
-Segmentation : Binary thresholding at 0.5 (sigmoid output)
-Contrast Agent : {scan_info['contrast']}
+Preprocessing   : CLAHE (clipLimit=2.0, tileGridSize=(8×8))
+Segmentation    : Binary thresholding at 0.5
+Contrast Agent  : {scan_info['contrast']}
 Slice Thickness : {scan_info['slice_thickness']} mm
-Window/Level : Lung Window (WL: -600 / WW: 1500)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 QUANTITATIVE AI FINDINGS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Total Scan Pixels : 65,536 (256 × 256)
-  Segmented Lung Area : {lung_pixels:,} pixels
-  Lung Field Coverage : {area_pct:.2f}% of axial slice
-  Coverage Assessment : {coverage_status}
+  Total Scan Pixels           : 65,536 (256 × 256)
+  Segmented Lung Area         : {lung_pixels:,} pixels
+  Lung Field Coverage         : {area_pct:.2f}% of axial slice
+  Coverage Assessment         : {coverage_status}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IMPRESSION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  1. AI-assisted lung segmentation successfully performed on the submitted
-     axial CT slice.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. AI-assisted lung segmentation successfully performed.
   2. Segmented lung field area of {area_pct:.2f}% is {coverage_status.lower()}.
-  3. Multi-slice volumetric analysis is recommended for comprehensive
-     pulmonary assessment.
-RECOMMENDATION: Clinical correlation with complete CT series, pulmonary
-function tests, and patient history is strongly advised. This AI report
-is intended as a decision-support tool and does not replace interpretation
-by a board-certified radiologist.
+  3. Multi-slice volumetric analysis is recommended for comprehensive assessment.
+RECOMMENDATION: Clinical correlation with complete CT series, pulmonary function tests, and patient history is strongly advised.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SIGNATURES
+SIGNATURES & DISCLAIMER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Electronically generated by:
-  MediScan AI System v2.0 — U-Net Lung Segmentation Engine
-Verified & Released by:
-  [ Radiologist Signature Required Before Clinical Use ]
-Report ID : {report_id}
-Date/Time : {date_str} at {time_str}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DISCLAIMER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This report is generated by an AI-assisted system and is intended SOLELY for
-research and educational purposes. It does not constitute a final clinical
-diagnosis. All findings must be reviewed and confirmed by a licensed and
-qualified radiologist or medical professional before any clinical action is
-taken. MediScan AI assumes no medico-legal liability for decisions made
-solely on the basis of this automated output.
+Electronically generated by: MediScan AI System v2.0
 © {now.year} MediScan AI Radiology Suite. All rights reserved.
 ================================================================================
 """
     return report.strip()
 
 # ─────────────────────────────────────────────────────────────
-# MAIN UI (Everything else exactly same)
+# MAIN UI (Everything else same)
 # ─────────────────────────────────────────────────────────────
 def main():
     with st.sidebar:
@@ -261,20 +233,15 @@ def main():
 
     model, loaded = load_model()
     if not loaded:
-        st.error("⚠️ Model weights file ('best_unet_model.pth') not found in the working directory.")
-        st.info("Please place the trained model file alongside app.py and restart.")
+        st.error("⚠️ Model weights file ('best_unet_model.pth') not found.")
         return
 
-    uploaded = st.file_uploader(
-        "📂 Select Axial CT Slice",
-        type=["png", "jpg", "jpeg", "tif"],
-        help="Upload a single axial CT slice image (DICOM-exported PNG/JPG/TIF)"
-    )
+    uploaded = st.file_uploader("📂 Select Axial CT Slice", type=["png", "jpg", "jpeg", "tif"])
 
     if uploaded:
         pil_img = Image.open(uploaded)
         col1, col2, col3 = st.columns([1, 1, 1.3])
-        
+
         with col1:
             st.subheader("📷 Source Image")
             st.image(pil_img, use_column_width=True, caption="Uploaded CT Slice")
@@ -283,7 +250,7 @@ def main():
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         norm_img = clahe.apply(img_np).astype(np.float32) / 255.0
         t = torch.tensor(norm_img).unsqueeze(0).unsqueeze(0)
-        
+
         with torch.no_grad():
             out = model(t)
             mask = (out.squeeze().numpy() > 0.5).astype(np.uint8)
@@ -319,7 +286,7 @@ def main():
             now = datetime.now()
             report_id = f"RAD-{now.strftime('%Y%m%d%H%M%S')}"
             coverage_status = "Within normal range" if 20 <= area_pct <= 60 else "Requires review"
-            
+
             st.markdown(f"""
             <div class="report-container">
               <div class="report-header">
@@ -375,7 +342,7 @@ def main():
                 </div>
               </div>
               <div class="disclaimer">
-                ⚠️ <strong>Disclaimer:</strong> This report is generated by an AI-assisted system for <strong>research and educational purposes only</strong>. It does not constitute a final clinical diagnosis. All findings must be reviewed and confirmed by a licensed radiologist before any clinical action is taken. MediScan AI assumes no medico-legal liability for decisions made solely on this automated output.
+                ⚠️ <strong>Disclaimer:</strong> This report is generated by an AI-assisted system for <strong>research and educational purposes only</strong>. It does not constitute a final clinical diagnosis. All findings must be reviewed and confirmed by a licensed radiologist before any clinical action is taken.
               </div>
               <div class="signature-block">
                 <div>
